@@ -1,11 +1,16 @@
-require 'sensory_channel'
-require 'decision_makers'
-require 'bodies'
+$:.unshift File.dirname(__FILE__)
 
-body = NXTBody.new()
+require 'fred/memory_elements'
+require 'fred/sensory_channel'
+require 'fred/decision_maker'
+require 'fred/body'
 
-body.initialize_senses
+def come_to_life
+  body = NXTBody.new()
 
-sleep(10)
+  body.initialize_senses
 
-body.kill
+  sleep(10)
+
+  body.die
+end

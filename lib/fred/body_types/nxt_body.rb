@@ -1,4 +1,4 @@
-require 'ruby-nxt'
+require 'ruby_nxt'
 
 class NXTBody < Body
   DEFAULT_TOUCH_PORT      = 1
