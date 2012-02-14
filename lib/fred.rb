@@ -2,15 +2,11 @@ $:.unshift File.dirname(__FILE__)
 
 require 'fred/memory_elements'
 require 'fred/sensory_channel'
-require 'fred/decision_maker'
+require 'fred/input_processor'
 require 'fred/body'
 
-def come_to_life
+def wake_up_body
   body = NXTBody.new()
 
-  body.initialize_senses
-
-  sleep(10)
-
-  body.die
+  body.wake_up
 end

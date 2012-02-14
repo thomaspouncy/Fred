@@ -15,14 +15,18 @@ class NXTBody < Body
 
     sensory_channels = {
       :touch => SensoryChannel.new("touch",Commands::TouchSensor.new(nxt,touch_port),:raw_value),
-      # :color => SensoryChannel.new("color",Commands::ColorSensor.new(nxt,color_port),:current_color),
-      # :ultrasonic => SensoryChannel.new("ultrasonic",Commands::UltrasonicSensor.new(nxt,ultrasonic_port),:distance)
+      :color => SensoryChannel.new("color",Commands::ColorSensor.new(nxt,color_port),:current_color),
+      :ultrasonic => SensoryChannel.new("ultrasonic",Commands::UltrasonicSensor.new(nxt,ultrasonic_port),:distance)
     }
 
     super(sensory_channels)
   end
 
-  def kill
+  def die
+    unless sensory_channels[:color].nil?
+      sensory_channels[:color].sensor.light_sensor
+    end
+
     nxt.close
 
     super

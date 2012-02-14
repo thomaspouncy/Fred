@@ -1,6 +1,6 @@
 class SensoryChannel
   DEFAULT_MAX_QUEUE_LENGTH 	  = 8
-  DEFAULT_CYCLE_LENGTH				= 1
+  DEFAULT_CYCLE_LENGTH				= 0.25
 
   attr_reader :name,
               :sensor,
@@ -36,11 +36,12 @@ class SensoryChannel
   end
 
   def update_input_pattern
-    if current_sensor_value == previous_sensor_value
+    value = current_sensor_value
+    if value == previous_sensor_value
       # increment the cycle count
       memory_queue[-1][1] += 1
     else
-      memory_queue << [current_sensor_value,1]
+      memory_queue << [value,1]
     end
   end
 
