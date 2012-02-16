@@ -1,4 +1,5 @@
 require 'ruby_nxt'
+require 'mongo'
 
 # Constants
 
@@ -7,6 +8,11 @@ TOP_SPEED_THRESHOLD				= 1
 DEFAULT_STOPPING_DISTANCE = 10
 DEFAULT_STOPPING_TIME			= 1.5
 SLEEP_INTERVAL					  = 0.005
+
+def setup_mongo
+  @db = Mongo::Connection.new.db("fred")
+  @col = @db.collection("distance_memory")
+end
 
 def get_distance
   @memory_queue << [@us.distance,Time.now.to_f]
@@ -47,7 +53,12 @@ def motors_reach_top_speed
   ((@memory_queue[-1][0] - @memory_queue[-2][0]).abs - (@memory_queue[-2][0] - @memory_queue[-3][0]).abs) <= TOP_SPEED_THRESHOLD ? true : false
 end
 
+def store_memory_in_long_term
+  @col.insert({:_id=>Time.now.to_s,:memory=>@memory_queue})
+end
+
 def forget_everything
+  store_memory_in_long_term
   @memory_queue.clear
 end
 
@@ -137,6 +148,7 @@ def stop_motors
   )
 end
 
+setup_mongo
 
 $DEBUG = false
 
@@ -155,3 +167,5 @@ $DEBUG = false
 
 # drive_to_nearest_wall
 puts "Estimated friction was: #{calculate_friction}"
+
+forget_everything
