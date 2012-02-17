@@ -14,6 +14,17 @@ def setup_mongo
   @col = @db.collection("distance_memory")
 end
 
+def setup_nxt
+  $DEBUG = false
+  @nxt = NXTComm.new("/dev/tty.NXT-DevB")
+  @nxt.reset_motor_position(NXTComm::MOTOR_ALL)
+end
+
+def setup_ultrasonic_sensor
+  @us = Commands::UltrasonicSensor.new(@nxt)
+  @us.mode = :inches
+end
+
 def store_memory_in_long_term
   @col.insert({:_id=>Time.now.to_s,:memory=>@memory_queue})
 end
@@ -58,6 +69,20 @@ def remember_event_section_information(info_hash)
   @current_section.last[:info] = @current_section.last[:info].merge(info_hash)
 end
 
+def we_remember_the_event?(event_name)
+  !@col.find_one({:_id => event_name}).nil?
+end
+
+def fetch_info_from_memory_of_event(info_to_fetch,event_name,event_section_name=nil)
+  event = @col.find_one({:_id => event_name})
+  raise "Event #{event_name} unexpectedly nil" if event.nil?
+  if event_section_name.nil?
+    event[info_to_fetch.to_s]
+  else
+    event[event_section_name.to_s][info_to_fetch.to_s]
+  end
+end
+
 def get_distance
   @memory_queue << [@us.distance,Time.now.to_f]
   puts "Distance: #{@memory_queue.last[0]}in"
@@ -66,26 +91,26 @@ def get_distance
   return @memory_queue.last[0]
 end
 
-def update_speed_approximation
-  total_distance = (@memory_queue.last[0] - @memory_queue.first[0]).abs
-  total_time = (@memory_queue.last[1] - @memory_queue.first[1]).abs
+# def update_speed_approximation
+  # total_distance = (@memory_queue.last[0] - @memory_queue.first[0]).abs
+  # total_time = (@memory_queue.last[1] - @memory_queue.first[1]).abs
+#
+  # @estimated_self_speed = (total_distance.to_f / total_time)
+  # puts "estimated speed is now: #{@estimated_self_speed} in/s"
+#
+  # return @estimated_self_speed
+# end
 
-  @estimated_self_speed = (total_distance.to_f / total_time)
-  puts "estimated speed is now: #{@estimated_self_speed} in/s"
-
-  return @estimated_self_speed
-end
-
-def update_stopping_distance
-  speed = update_speed_approximation
-  time_to_stop = @estimated_stopping_time
-
-  # for now assuming a linear slow down process
-  @estimated_stopping_distance = (speed*time_to_stop).to_f/2 + @adjusted_ultrasonic_distance
-  puts "estimated stopping distance is now: #{@estimated_stopping_distance} in"
-
-  return @estimated_stopping_distance
-end
+# def update_stopping_distance
+  # speed = update_speed_approximation
+  # time_to_stop = @estimated_stopping_time
+#
+  # # for now assuming a linear slow down process
+  # @estimated_stopping_distance = (speed*time_to_stop).to_f/2 + @adjusted_ultrasonic_distance
+  # puts "estimated stopping distance is now: #{@estimated_stopping_distance} in"
+#
+  # return @estimated_stopping_distance
+# end
 
 def we_appear_to_have_stopped
   return false if @memory_queue.length < 3
@@ -98,6 +123,7 @@ def motors_reach_top_speed
 end
 
 def clear_short_term_memory
+  @memory_queue ||= []
   @memory_queue.clear
 end
 
@@ -153,15 +179,34 @@ def calculate_friction
   estimated_friction
 end
 
+# def drive_to_nearest_wall
+  # get_distance
+#
+  # start_motors
+#
+  # while get_distance > update_stopping_distance
+    # if we_appear_to_have_stopped
+      # stop_motors
+      # puts "We seem to have prematurely stopped. WTF"
+      # break
+    # end
+    # sleep(SLEEP_INTERVAL)
+  # end
+#
+  # stop_motors
+#
+  # puts "Got it!"
+# end
+
 def drive_to_nearest_wall
-  get_distance
+  @desired_end_distance = 3
 
-  start_motors
+  start_motors(@motor_power)
 
-  while get_distance > update_stopping_distance
+  while get_distance > (@estimated_stopping_distance + @desired_end_distance)
     if we_appear_to_have_stopped
       stop_motors
-      puts "We seem to have prematurely stopped. WTF"
+      puts "We seem to have prematurely stopped"
       break
     end
     sleep(SLEEP_INTERVAL)
@@ -169,7 +214,7 @@ def drive_to_nearest_wall
 
   stop_motors
 
-  puts "Got it!"
+  puts "Actual distance: #{get_distance}. Desired distance: #{@desired_end_distance}"
 end
 
 def start_motors(motor_power=100)
@@ -206,23 +251,21 @@ def stop_motors
 end
 
 setup_mongo
-
-$DEBUG = false
-
-@nxt = NXTComm.new("/dev/tty.NXT-DevB")
-
-@memory_queue = []
-@estimated_stopping_distance = DEFAULT_STOPPING_DISTANCE
-@estimated_stopping_time = DEFAULT_STOPPING_TIME
-@estimated_self_speed = nil
-@adjusted_ultrasonic_distance = 3
-
-@nxt.reset_motor_position(NXTComm::MOTOR_ALL)
-
-@us = Commands::UltrasonicSensor.new(@nxt)
-@us.mode = :inches
-
-# drive_to_nearest_wall
-puts "Estimated friction was: #{calculate_friction}"
-
+setup_nxt
+setup_ultrasonic_sensor
 clear_short_term_memory
+
+if we_remember_the_event?("friction_test")
+  puts "friction memory found, driving to wall"
+  estimated_friction = fetch_info_from_memory_of_event("estimated_friction","friction_test")
+  @motor_power = 100
+  @estimated_stopping_distance = estimated_friction * @motor_power
+  puts "estimated_stopping_distance: #{@estimated_stopping_distance}"
+  drive_to_nearest_wall
+else
+  puts "no memories of friction; calculating friction"
+  calculate_friction
+end
+
+@nxt.close
+
