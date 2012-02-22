@@ -1,7 +1,13 @@
 module MemoryLogic
+  attr_accessor :memory_queue
+
+  def memory_queue
+    @memory_queue ||= []
+  end
+
   def store_memory_in_long_term
     raise "No collection set" if @col.nil?
-    @col.insert({:_id=>Time.now.to_s,:memory=>@memory_queue})
+    @col.insert({:_id=>Time.now.to_s,:memory=>memory_queue})
   end
 
   def start_memory_event(event_name)
@@ -66,7 +72,6 @@ module MemoryLogic
   end
 
   def clear_short_term_memory
-    @memory_queue ||= []
-    @memory_queue.clear
+    memory_queue.clear
   end
 end

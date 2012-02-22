@@ -1,15 +1,25 @@
 require 'ruby_nxt'
 
 module NXTLogic
-  def setup_nxt
-    $DEBUG = false
+  attr_reader :ports
+
+  def setup_nxt(debug = false)
+    $DEBUG = debug
     @nxt = NXTComm.new("/dev/tty.NXT-DevB")
     # @nxt.reset_motor_position(NXTComm::MOTOR_ALL)
+
+    @ports = [:b,:c]
   end
 
   def setup_ultrasonic_sensor
     @us = Commands::UltrasonicSensor.new(@nxt)
     @us.mode = :inches
+  end
+
+  def reset_motors
+    ports.each do |p|
+      @nxt.reset_motor_position(NXTComm.const_get("MOTOR_#{p.to_s.upcase}"), false)
+    end
   end
 
   def start_motors(motor_power=100)

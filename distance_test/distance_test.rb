@@ -21,24 +21,24 @@ class DistanceTest
 
   def get_distance
     latest_distance = {:distance=>@us.distance,:time=>Time.now.to_f}
-    unless @memory_queue.empty?
+    unless memory_queue.empty?
       latest_distance[:speed] = approximate_current_speed(latest_distance)
     end
-    @memory_queue << latest_distance
-    puts "Distance: #{@memory_queue.last[:distance]}in"
-    puts "memory queue: #{@memory_queue.inspect}"
+    memory_queue << latest_distance
+    puts "Distance: #{memory_queue.last[:distance]}in"
+    puts "memory queue: #{memory_queue.inspect}"
 
-    return @memory_queue.last[:distance]
+    return memory_queue.last[:distance]
   end
 
   def we_appear_to_have_stopped
-    return false if @memory_queue.length < 3
-    (@memory_queue[-1][:distance] - @memory_queue[-2][:distance]).abs <= STOPPED_THRESHOLD ? true : false
+    return false if memory_queue.length < 3
+    (memory_queue[-1][:distance] - memory_queue[-2][:distance]).abs <= STOPPED_THRESHOLD ? true : false
   end
 
   def motors_reach_top_speed
-    return false if @memory_queue.length < 3
-    ((@memory_queue[-1][:distance] - @memory_queue[-2][:distance]).abs - (@memory_queue[-2][:distance] - @memory_queue[-3][:distance]).abs) <= TOP_SPEED_THRESHOLD ? true : false
+    return false if memory_queue.length < 3
+    ((memory_queue[-1][:distance] - memory_queue[-2][:distance]).abs - (memory_queue[-2][:distance] - memory_queue[-3][:distance]).abs) <= TOP_SPEED_THRESHOLD ? true : false
   end
 
   def calibrate_ultrasonic_sensor
